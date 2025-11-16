@@ -9,8 +9,8 @@ client:
 
 
 slm_parameters: #These are for Holoeye version
-  x_pixels: 1000 #4000
-  y_pixels: 664 #2464
+  x_pixels: 4000 #4000
+  y_pixels: 2464 #2464
   bit_depth: 12
   lut: 'C:\\Users\\Gandalf\\Box\\EndresLab\\z_Second Experiment\\Code\\SLM simulation\\Large Array HM\\HDMI ed version\\slm6030_at1060_06-22-23.lut'
   wfc: 'C:\Users\Endres Lab\Box\EndresLab\z_Second Experiment\Code\SLM simulation\Large Array HM\HDMI ed version\6131 SLM\slm6131_at1064_WFC.bmp'

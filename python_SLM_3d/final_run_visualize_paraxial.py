@@ -33,7 +33,7 @@ N_VERT = 20
 SPACING_UM = 30.0
 
 # GS algorithm
-ITERATIONS = 5  # Quick test
+ITERATIONS = 250  # Quick test
 GG = 0.6
 REDSLM = 1
 SCAL = 4
