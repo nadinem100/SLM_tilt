@@ -42,7 +42,7 @@ echo ""
 
 # Run the script
 echo "Starting SLM simulation..."
-python test_adaptive_gs.py
+python -u test_adaptive_gs.py
 
 # Deactivate virtual environment
 deactivate
