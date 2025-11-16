@@ -16,6 +16,8 @@ env/
 *.pkl
 *.jpg
 *.jpeg
+*.png
+*.bmp
 phase_masks_tilt/
 debugging/
 old_files/
@@ -24,6 +26,7 @@ archive/
 slm_python/
 phase_masks/
 slurm_logs/
+slm_output_paraxial/
 
 # MATLAB files
 *.m
