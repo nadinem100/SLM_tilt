@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=slm_adaptive_gs
+#SBATCH --job-name=20x20,10planes,250it
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
