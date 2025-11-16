@@ -23,6 +23,7 @@ reploitting/
 archive/
 slm_python/
 phase_masks/
+slurm_logs/
 
 # MATLAB files
 *.m

@@ -7,8 +7,11 @@
 #SBATCH --time=01:00:00
 #SBATCH --partition=gpu
 #SBATCH --gres=gpu:1
-#SBATCH --output=slurm_%j.out
-#SBATCH --error=slurm_%j.err
+#SBATCH --output=slurm_logs/slurm_%j.out
+#SBATCH --error=slurm_logs/slurm_%j.err
+
+# Create log directory if it doesn't exist
+mkdir -p $SLURM_SUBMIT_DIR/slurm_logs
 
 # Print job info
 echo "=========================================="
