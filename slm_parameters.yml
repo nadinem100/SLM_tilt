@@ -1,0 +1,29 @@
+socket:
+  port: 8021
+  host: ''
+  buffer_size: 33554432
+  ip: 131.215.112.136 #update
+
+client:
+  timeout: 100
+
+
+slm_parameters: #These are for Holoeye version
+  x_pixels: 4000 #4000
+  y_pixels: 2464 #2464
+  bit_depth: 12
+  lut: 'C:\\Users\\Gandalf\\Box\\EndresLab\\z_Second Experiment\\Code\\SLM simulation\\Large Array HM\\HDMI ed version\\slm6030_at1060_06-22-23.lut'
+  wfc: 'C:\Users\Endres Lab\Box\EndresLab\z_Second Experiment\Code\SLM simulation\Large Array HM\HDMI ed version\6131 SLM\slm6131_at1064_WFC.bmp'
+  RGB: true
+  bytesPerPixel: 3
+  pixel_um : 3.74
+  x_size_mm : 15.56
+  y_size_mm : 9.22
+
+#serial:
+  #com: /dev/ttyUSB0
+  #baudrate: 115200
+  #bytesize: 8
+  #parity: null
+  #stopbits: 1
+  #gpio_pin: 17
