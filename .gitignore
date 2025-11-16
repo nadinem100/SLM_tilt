@@ -21,6 +21,8 @@ debugging/
 old_files/
 reploitting/
 archive/
+slm_python/
+phase_masks/
 
 # MATLAB files
 *.m
