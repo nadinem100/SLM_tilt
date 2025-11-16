@@ -14,12 +14,17 @@ env/
 
 # Output files
 *.pkl
-*.bmp
-*.png
 *.jpg
 *.jpeg
-slm_output_paraxial/
 phase_masks_tilt/
+debugging/
+old_files/
+reploitting/
+archive/
+
+# MATLAB files
+*.m
+*.asv
 
 # Backup files
 *_backup.py

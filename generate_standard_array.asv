@@ -1,3 +1,0 @@
-;
-
-[phase_mask, A_target, A_out] = modularized_WGS;
