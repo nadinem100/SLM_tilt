@@ -4,7 +4,7 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=128G
-#SBATCH --time=10:00:00
+#SBATCH --time=16:00:00
 #SBATCH --partition=gpu
 #SBATCH --gres=gpu:1
 #SBATCH --output=../slurm_logs/slurm_%j.out
@@ -39,7 +39,7 @@ N_Z_PLANES=10
 ITERATIONS=100
 SCAL=4
 WAIST_COEFF=9.0
-TILT_ANGLE=-10
+TILT_ANGLE=-8  # Changed from -10
 
 echo "Starting SLM simulation..."
 echo "Grid: 80x80, Spacing: 7.2um, Tilt: ${TILT_ANGLE}deg"

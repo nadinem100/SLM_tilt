@@ -4,7 +4,7 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=128G
-#SBATCH --time=10:00:00
+#SBATCH --time=16:00:00
 #SBATCH --partition=gpu
 #SBATCH --gres=gpu:1
 #SBATCH --output=../slurm_logs/slurm_%j.out
@@ -53,6 +53,7 @@ N_Z_PLANES=10
 ITERATIONS=100
 SCAL=4  # Resolution scaling factor (2 = fast, 4 = accurate)
 WAIST_COEFF=9.0  # Beam waist coefficient (9.0 = working config from 2025-11-26)
+# Note: Tilt angle is set in test_adaptive_gs.py to -11 degrees (was -13)
 
 # Run the script
 echo "Starting SLM simulation (FIXED CORRECTION)..."

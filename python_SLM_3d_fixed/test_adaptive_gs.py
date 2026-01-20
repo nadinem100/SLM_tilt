@@ -20,9 +20,9 @@ from slm_tweezers_class_WITH_AUTO_CLEANUP_paraxial import SLMTweezers
 YAML_PATH = "../slm_parameters.yml"
 
 # Grid configuration
-N_HORIZ = 20 # 80
-N_VERT = 20 #80
-SPACING_UM = 30 #7.2  # MATLAB-equivalent spacing (was 30 for original 20x20)
+N_HORIZ = 20
+N_VERT = 20
+SPACING_UM = 30.0  # um spacing between tweezers
 
 # GS algorithm
 GG = 0.6
@@ -34,11 +34,11 @@ FOCAL_LENGTH_UM = 200000.0  # 200 mm
 WAVELENGTH_UM = 0.689
 
 # Tilt configuration
-TILT_ANGLE_X = -13  # degrees
+TILT_ANGLE_X = -11  # degrees (changed from -13)
 
 # Command-line arguments (defaults match working config from 2025-11-26)
-N_Z_PLANES = int(sys.argv[1]) if len(sys.argv) > 1 else 10  # Default 10 (was 5, but 10 worked!)
-ITERATIONS = int(sys.argv[2]) if len(sys.argv) > 2 else 80  # Default 100
+N_Z_PLANES = int(sys.argv[1]) if len(sys.argv) > 1 else 10  # Default 10
+ITERATIONS = int(sys.argv[2]) if len(sys.argv) > 2 else 100  # Default 100
 SCAL = int(sys.argv[3]) if len(sys.argv) > 3 else 4  # Default 4
 WAIST_COEFF = float(sys.argv[4]) if len(sys.argv) > 4 else 9.0  # Default 9.0 (worked on 2025-11-26)
 WAIST_UM = WAIST_COEFF / 2 * 1e3  # microns
@@ -123,7 +123,7 @@ def main():
 
     # ========== SAVE RESULTS ==========
     print("\n--- Saving results ---")
-    label = f"_adaptive_{N_HORIZ}x{N_VERT}_tilt{TILT_ANGLE_X}deg_{N_Z_PLANES}planes_{ITERATIONS}iter_scal{SCAL}_waist{WAIST_COEFF}"
+    label = f"_adaptive_{N_HORIZ}x{N_VERT}_sp{SPACING_UM}um_tilt{TILT_ANGLE_X}deg_{N_Z_PLANES}planes_{ITERATIONS}iter_scal{SCAL}_waist{WAIST_COEFF}"
     bundle = slm.save_pickle(out_dir=str(OUT_DIR), label=label)
     print(f"[OK] Saved: {bundle.file}")
 
@@ -152,7 +152,7 @@ def main():
 
     # Save BMP
     save_phase_bmp(phase_blazed, out_bmp)
-    print(f"[OK] Saved BMP: {out_bmp.name}")
+    print(f"[OK] Saved BMP: {out_bmp.resolve()}")
 
     # ========== RUN DIAGNOSTIC VISUALIZATION ==========
     print("\n" + "="*70)
@@ -164,12 +164,15 @@ def main():
 
     # Run the diagnostic script with the pickle path as argument
     # This will generate both the z-profiles and xy-grid figures
+    script_dir = Path(__file__).parent
+    diagnostic_script = script_dir / "diagnose_tweezer_xz_profiles.py"
     try:
         result = subprocess.run(
-            [sys.executable, "diagnose_tweezer_xz_profiles.py", str(bundle.file)],
+            [sys.executable, str(diagnostic_script), str(bundle.file)],
             check=True,
             capture_output=True,
-            text=True
+            text=True,
+            cwd=str(script_dir)  # Run from script directory
         )
         print(result.stdout)
     except subprocess.CalledProcessError as e:

@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=slm_80x80_tilt15
+#SBATCH --job-name=slm_80x80_tilt_pos13
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
@@ -34,15 +34,15 @@ echo "GPU info:"
 nvidia-smi
 echo ""
 
-# Parameters: 80x80, 7.2um, -15 degree tilt
+# Parameters: 80x80, 7.2um, +13 degree tilt (POSITIVE)
 N_Z_PLANES=10
 ITERATIONS=100
 SCAL=4
 WAIST_COEFF=9.0
-TILT_ANGLE=-13  # Changed from -15
+TILT_ANGLE=13  # POSITIVE tilt
 
 echo "Starting SLM simulation..."
-echo "Grid: 80x80, Spacing: 7.2um, Tilt: ${TILT_ANGLE}deg"
+echo "Grid: 80x80, Spacing: 7.2um, Tilt: +${TILT_ANGLE}deg"
 echo "N_Z_PLANES=$N_Z_PLANES, ITERATIONS=$ITERATIONS, SCAL=$SCAL, WAIST=$WAIST_COEFF"
 python -u test_adaptive_gs_80x80.py $N_Z_PLANES $ITERATIONS $SCAL $WAIST_COEFF $TILT_ANGLE
 
