@@ -17,8 +17,8 @@ slm_parameters: #These are for Holoeye version
   RGB: true
   bytesPerPixel: 3
   pixel_um : 3.74
-  x_size_mm : 15.56
-  y_size_mm : 9.22
+  x_size_mm : 14.96  # 4000 * 3.74 um (corrected from website spec)
+  y_size_mm : 9.21   # 2464 * 3.74 um (corrected from website spec)
 
 #serial:
   #com: /dev/ttyUSB0
