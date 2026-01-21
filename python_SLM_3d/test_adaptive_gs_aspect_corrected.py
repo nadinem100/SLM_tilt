@@ -16,12 +16,12 @@ from slm_tweezers_class_WITH_AUTO_CLEANUP_paraxial import SLMTweezers
 YAML_PATH = "../slm_parameters.yml"
 
 # Grid configuration (small test for speed)
-N_HORIZ = 20
-N_VERT = 20
+N_HORIZ = 10
+N_VERT = 10
 SPACING_UM = 30 # 30 #4 #30.0
 
 # GS algorithm
-ITERATIONS = 50
+ITERATIONS = 20
 GG = 0.6
 REDSLM = 1
 SCAL = 4
@@ -95,18 +95,29 @@ def main():
                         odd_tw=1, box1=2)
 
     # Now manually correct the y-coordinates to use aspect-corrected spacing
-    # The internal target_xy_um is a (K, 2) array with columns [x_um, y_um]
+    # The class applies ypix/xpix = 2464/4000 = 0.616 to the PIXEL spacing
+    # This makes vertical pixel spacing SMALLER than horizontal
+    # But we want EQUAL physical spacing, so we need to UNDO this by dividing by (ypix/xpix)
+    # Which is the same as multiplying by ASPECT_RATIO = xpix/ypix = 4000/2464
     if hasattr(slm, 'target_xy_um') and slm.target_xy_um is not None:
         print(f"\n--- Adjusting Y positions for aspect ratio ---")
         print(f"  Original X range: [{slm.target_xy_um[:, 0].min():.2f}, {slm.target_xy_um[:, 0].max():.2f}] µm")
         print(f"  Original Y range: [{slm.target_xy_um[:, 1].min():.2f}, {slm.target_xy_um[:, 1].max():.2f}] µm")
 
-        # Scale only the Y coordinates (column 1)
+        # The class makes Y spacing smaller by factor ypix/xpix
+        # We undo this by multiplying by xpix/ypix = ASPECT_RATIO
         slm.target_xy_um[:, 1] = slm.target_xy_um[:, 1] * ASPECT_RATIO
 
         print(f"  Adjusted X range: [{slm.target_xy_um[:, 0].min():.2f}, {slm.target_xy_um[:, 0].max():.2f}] µm")
         print(f"  Adjusted Y range: [{slm.target_xy_um[:, 1].min():.2f}, {slm.target_xy_um[:, 1].max():.2f}] µm")
         print(f"  Total tweezers: {len(slm.target_xy_um)}")
+
+        # Also print the expected spacing
+        if len(slm.target_xy_um) > 1:
+            x_spacing_measured = slm.target_xy_um[1, 0] - slm.target_xy_um[0, 0]
+            y_spacing_measured = slm.target_xy_um[N_HORIZ, 1] - slm.target_xy_um[0, 1] if len(slm.target_xy_um) > N_HORIZ else 0
+            print(f"  Measured X spacing: {x_spacing_measured:.2f} µm")
+            print(f"  Measured Y spacing: {y_spacing_measured:.2f} µm")
 
     slm.set_optics(wavelength_um=WAVELENGTH_UM, focal_length_um=FOCAL_LENGTH_UM)
 
