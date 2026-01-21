@@ -41,7 +41,7 @@ cp test_adaptive_gs_matlab_spacing.py test_adaptive_gs_temp.py
 sed -i 's/N_HORIZ = .*/N_HORIZ = 80/' test_adaptive_gs_temp.py
 sed -i 's/N_VERT = .*/N_VERT = 80/' test_adaptive_gs_temp.py
 sed -i 's/SPACING_FACTOR = .*/SPACING_FACTOR = 3.5/' test_adaptive_gs_temp.py
-sed -i 's/TILT_ANGLE_X = .*/TILT_ANGLE_X = -13  # degrees/' test_adaptive_gs_temp.py
+sed -i 's/TILT_ANGLE_X = .*/TILT_ANGLE_X = 0  # degrees/' test_adaptive_gs_temp.py
 sed -i 's/N_Z_PLANES = .*/N_Z_PLANES = 1/' test_adaptive_gs_temp.py
 sed -i 's/ITERATIONS = .*/ITERATIONS = 75/' test_adaptive_gs_temp.py
 sed -i 's/SCAL = .*/SCAL = 2/' test_adaptive_gs_temp.py
