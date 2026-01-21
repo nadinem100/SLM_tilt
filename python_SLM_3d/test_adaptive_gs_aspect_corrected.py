@@ -16,12 +16,12 @@ from slm_tweezers_class_WITH_AUTO_CLEANUP_paraxial import SLMTweezers
 YAML_PATH = "../slm_parameters.yml"
 
 # Grid configuration (small test for speed)
-N_HORIZ = 5
-N_VERT = 5
+N_HORIZ = 20
+N_VERT = 20
 SPACING_UM = 30 # 30 #4 #30.0
 
 # GS algorithm
-ITERATIONS = 10
+ITERATIONS = 50
 GG = 0.6
 REDSLM = 1
 SCAL = 4
@@ -33,8 +33,8 @@ FOCAL_LENGTH_UM = 200000.0  # 200 mm
 WAVELENGTH_UM = 0.689
 
 # Tilt configuration
-TILT_ANGLE_X = 0 #-13  # degrees
-N_Z_PLANES = 1 #5
+TILT_ANGLE_X = -13  # degrees
+N_Z_PLANES = 5
 
 # Adaptive parameters
 Z_SCAN_EVERY = 5  # Scan every 5 iterations
@@ -95,15 +95,18 @@ def main():
                         odd_tw=1, box1=2)
 
     # Now manually correct the y-coordinates to use aspect-corrected spacing
-    # The internal _target_y_um needs to be scaled by ASPECT_RATIO
-    if hasattr(slm, '_target_y_um'):
+    # The internal target_xy_um is a (K, 2) array with columns [x_um, y_um]
+    if hasattr(slm, 'target_xy_um') and slm.target_xy_um is not None:
         print(f"\n--- Adjusting Y positions for aspect ratio ---")
-        print(f"  Original Y range: [{slm._target_y_um.min():.2f}, {slm._target_y_um.max():.2f}] µm")
-        slm._target_y_um = slm._target_y_um * ASPECT_RATIO
-        print(f"  Adjusted Y range: [{slm._target_y_um.min():.2f}, {slm._target_y_um.max():.2f}] µm")
-        print(f"  Total tweezers: {len(slm._target_y_um)}")
-        if hasattr(slm, '_target_x_um'):
-            print(f"  X range: [{slm._target_x_um.min():.2f}, {slm._target_x_um.max():.2f}] µm")
+        print(f"  Original X range: [{slm.target_xy_um[:, 0].min():.2f}, {slm.target_xy_um[:, 0].max():.2f}] µm")
+        print(f"  Original Y range: [{slm.target_xy_um[:, 1].min():.2f}, {slm.target_xy_um[:, 1].max():.2f}] µm")
+
+        # Scale only the Y coordinates (column 1)
+        slm.target_xy_um[:, 1] = slm.target_xy_um[:, 1] * ASPECT_RATIO
+
+        print(f"  Adjusted X range: [{slm.target_xy_um[:, 0].min():.2f}, {slm.target_xy_um[:, 0].max():.2f}] µm")
+        print(f"  Adjusted Y range: [{slm.target_xy_um[:, 1].min():.2f}, {slm.target_xy_um[:, 1].max():.2f}] µm")
+        print(f"  Total tweezers: {len(slm.target_xy_um)}")
 
     slm.set_optics(wavelength_um=WAVELENGTH_UM, focal_length_um=FOCAL_LENGTH_UM)
 
