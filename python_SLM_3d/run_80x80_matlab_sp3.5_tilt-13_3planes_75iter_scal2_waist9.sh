@@ -44,14 +44,14 @@ sed -i 's/SPACING_FACTOR = .*/SPACING_FACTOR = 3.5/' test_adaptive_gs_temp.py
 sed -i 's/TILT_ANGLE_X = .*/TILT_ANGLE_X = -13  # degrees/' test_adaptive_gs_temp.py
 sed -i 's/N_Z_PLANES = .*/N_Z_PLANES = 3/' test_adaptive_gs_temp.py
 sed -i 's/ITERATIONS = .*/ITERATIONS = 75/' test_adaptive_gs_temp.py
-sed -i 's/SCAL = .*/SCAL = 2/' test_adaptive_gs_temp.py
+sed -i 's/SCAL = .*/SCAL = 4/' test_adaptive_gs_temp.py
 sed -i 's/TOL = .*/TOL = 5e-3/' test_adaptive_gs_temp.py
 sed -i 's/Z_SCAN_STEPS = .*/Z_SCAN_STEPS = 7/' test_adaptive_gs_temp.py
 sed -i 's/WAIST_UM = .*/WAIST_UM = 9 \/ 2 * 1e3  # microns/' test_adaptive_gs_temp.py
 
 echo "Starting SLM simulation (FAST settings)..."
 echo "Grid: 80x80, MATLAB spacing_factor=3.5, Tilt: -13deg"
-echo "N_Z_PLANES=3, ITERATIONS=75, SCAL=2 (FAST), WAIST=9.0, TOL=5e-3"
+echo "N_Z_PLANES=3, ITERATIONS=75, SCAL=4, WAIST=9.0, TOL=5e-3"
 python -u test_adaptive_gs_temp.py
 
 # Clean up temp file
