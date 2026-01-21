@@ -16,15 +16,15 @@ from slm_tweezers_class_WITH_AUTO_CLEANUP_paraxial import SLMTweezers
 YAML_PATH = "../slm_parameters.yml"
 
 # Grid configuration (small test for speed)
-N_HORIZ = 10
-N_VERT = 10
+N_HORIZ = 20
+N_VERT = 20
 SPACING_UM = 30 # 30 #4 #30.0
 
 # GS algorithm
-ITERATIONS = 20
+ITERATIONS = 40
 GG = 0.6
 REDSLM = 1
-SCAL = 4
+SCAL = 2 # 4
 WAIST_UM = 9 /2 * 1e3 # 2.6 / 2 * 1e3  # microns 2.6 -> 9
 TOL = 5e-3
 
@@ -118,6 +118,72 @@ def main():
             y_spacing_measured = slm.target_xy_um[N_HORIZ, 1] - slm.target_xy_um[0, 1] if len(slm.target_xy_um) > N_HORIZ else 0
             print(f"  Measured X spacing: {x_spacing_measured:.2f} µm")
             print(f"  Measured Y spacing: {y_spacing_measured:.2f} µm")
+
+    # CRITICAL FIX: Also need to modify the PIXEL positions in tweezlist
+    # The GS algorithm uses tweezlist (pixel coords), not target_xy_um
+    # We need to scale the row positions (vertical) by ASPECT_RATIO
+    if hasattr(slm, 'tweezlist') and slm.tweezlist is not None and len(slm.tweezlist) > 0:
+        print(f"\n--- CRITICAL: Adjusting pixel positions (tweezlist) ---")
+        print(f"  Original pixel rows range: [{slm.tweezlist[:, 0].min()}, {slm.tweezlist[:, 0].max()}]")
+        print(f"  Original pixel cols range: [{slm.tweezlist[:, 1].min()}, {slm.tweezlist[:, 1].max()}]")
+
+        # Get the center
+        center_row = slm.center_row
+        center_col = slm.center_col
+        print(f"  Center: row={center_row}, col={center_col}")
+
+        # Scale rows (vertical positions) by ASPECT_RATIO relative to center
+        slm.tweezlist[:, 0] = center_row + (slm.tweezlist[:, 0] - center_row) * ASPECT_RATIO
+
+        print(f"  Adjusted pixel rows range: [{slm.tweezlist[:, 0].min():.1f}, {slm.tweezlist[:, 0].max():.1f}]")
+        print(f"  Adjusted pixel cols range: [{slm.tweezlist[:, 1].min():.1f}, {slm.tweezlist[:, 1].max():.1f}]")
+
+        # Also need to rebuild A_target and coordinates with new positions
+        print(f"  Rebuilding A_target and coordinates...")
+        from scipy.fft import fft2, fftshift, ifftshift
+        A_target = np.zeros_like(slm.A_target, dtype=np.float32)
+        box1 = slm.box1
+
+        # Round to integer positions and check bounds
+        target_rows = np.round(slm.tweezlist[:, 0]).astype(int)
+        target_cols = np.round(slm.tweezlist[:, 1]).astype(int)
+        valid = (target_rows >= box1) & (target_rows < A_target.shape[0] - box1) & \
+                (target_cols >= box1) & (target_cols < A_target.shape[1] - box1)
+
+        if not np.all(valid):
+            print(f"  Warning: {(~valid).sum()} tweezer(s) out of bounds after aspect correction")
+            # Keep only valid ones
+            slm.tweezlist = slm.tweezlist[valid]
+            slm.target_xy_um = slm.target_xy_um[valid]
+            target_rows = target_rows[valid]
+            target_cols = target_cols[valid]
+
+        # Set target positions
+        A_target[target_rows, target_cols] = 1.0
+        slm.A_target = A_target
+        slm.tweezer_mask = (A_target > 0).astype(np.uint8)
+
+        # Rebuild coordinates for each tweezer
+        side = 2 * box1 + 1
+        coords = []
+        centers = []
+        for r, c in zip(target_rows, target_cols):
+            centers.append([r, c])
+            rows_local = np.arange(r - box1, r + box1 + 1)
+            cols_local = np.arange(c - box1, c + box1 + 1)
+            grid_rows = np.repeat(rows_local, side)
+            grid_cols = np.tile(cols_local, side)
+            flat_idx = np.ravel_multi_index((grid_rows, grid_cols), A_target.shape)
+            coords.extend(flat_idx.tolist())
+
+        slm.tweezlist = np.array(centers, dtype=int)
+        slm.coordinates = np.array(coords, dtype=int)
+
+        # Update height corrections
+        slm.height_corr = np.ones((len(slm.tweezlist), 1), dtype=np.float64)
+        slm.height_corr2 = np.repeat(slm.height_corr, (2 * box1 + 1) ** 2, axis=0)
+
+        print(f"  Rebuilt successfully: {len(slm.tweezlist)} tweezers")
 
     slm.set_optics(wavelength_um=WAVELENGTH_UM, focal_length_um=FOCAL_LENGTH_UM)
 
