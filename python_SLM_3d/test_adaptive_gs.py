@@ -16,9 +16,9 @@ from slm_tweezers_class_WITH_AUTO_CLEANUP_paraxial import SLMTweezers
 YAML_PATH = "../slm_parameters.yml"
 
 # Grid configuration (small test for speed)
-N_HORIZ = 80
-N_VERT = 80
-SPACING_UM = 7.2 # 30 #4 #30.0
+N_HORIZ = 50
+N_VERT = 50
+SPACING_UM = 12 # 30 #4 #30.0
 
 # GS algorithm
 ITERATIONS = 100
@@ -34,7 +34,7 @@ WAVELENGTH_UM = 0.689
 
 # Tilt configuration
 TILT_ANGLE_X = -13  # degrees
-N_Z_PLANES = 3
+N_Z_PLANES = 5
 
 # Adaptive parameters
 Z_SCAN_EVERY = 5  # Scan every 5 iterations

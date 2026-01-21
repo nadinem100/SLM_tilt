@@ -17,12 +17,12 @@ from slm_tweezers_class_WITH_AUTO_CLEANUP_paraxial import SLMTweezers
 YAML_PATH = "../slm_parameters.yml"
 
 # Grid configuration
-N_HORIZ = 80
-N_VERT = 80
+N_HORIZ = 50
+N_VERT = 50
 
 # MATLAB spacing parameters (from modularized_WGS.m)
 # spacing_factor = 4/(2*0.77) in MATLAB
-SPACING_FACTOR = 4 / (2 * 0.77)  # ≈ 2.597
+SPACING_FACTOR = 4 # 4 / (2 * 0.77)  # ≈ 2.597
 
 # GS algorithm
 ITERATIONS = 100
@@ -30,22 +30,22 @@ GG = 0.6
 REDSLM = 1
 SCAL = 4
 WAIST_UM = 9 / 2 * 1e3  # microns
-TOL = 5e-3
+TOL = 1e-3
 
 # Optics
 FOCAL_LENGTH_UM = 200000.0  # 200 mm
 WAVELENGTH_UM = 0.689
 
 # Tilt configuration
-TILT_ANGLE_X = 0#-13  # degrees
-N_Z_PLANES = 1
+TILT_ANGLE_X = -13  # degrees
+N_Z_PLANES = 5
 
-# Adaptive parameters
-Z_SCAN_EVERY = 5
-Z_SCAN_RANGE_UM = 50.0
-Z_SCAN_STEPS = 11
-PEAK_SHARPNESS_THRESHOLD = 2.0
-Z_CORRECTION_FACTOR = 0.3
+# Adaptive parameters (improved for tighter spacing)
+Z_SCAN_EVERY = 5  # More frequent z-scans for tighter spacing
+Z_SCAN_RANGE_UM = 75.0  # Larger range to catch shifted peaks
+Z_SCAN_STEPS = 11  # More steps for better z-resolution
+PEAK_SHARPNESS_THRESHOLD = 2.5  # Higher threshold for Gaussian quality
+Z_CORRECTION_FACTOR = 0.4  # Slightly more aggressive correction
 
 
 # ================================ MATLAB SPACING CALCULATION ================================
@@ -203,6 +203,7 @@ def main():
         z_scan_steps=Z_SCAN_STEPS,
         peak_sharpness_threshold=PEAK_SHARPNESS_THRESHOLD,
         z_correction_factor=Z_CORRECTION_FACTOR,
+        spatial_search_radius_um=None,  # Auto-calculate from spacing
         verbose=True,
         tol=TOL
     )

@@ -38,6 +38,7 @@ import time
 import numpy as np
 import yaml
 from scipy.fft import fft2, ifft2, fftshift, ifftshift
+from scipy.spatial.distance import pdist
 import math
 import gc
 
@@ -940,10 +941,11 @@ class SLMTweezers:
                                     z_scan_every: int = 5, z_scan_range_um: float = 100.0,
                                     z_scan_steps: int = 21, peak_sharpness_threshold: float = 2.0,
                                     z_correction_factor: float = 0.3,
+                                    spatial_search_radius_um: float = None,
                                     verbose: bool = True, tol: float = 1e-4) -> None:
         """
         Adaptive multi-plane GS that periodically measures where each tweezer actually focuses
-        and adjusts defocus phases to improve z-accuracy.
+        and adjusts defocus phases to improve z-accuracy. Improved for tighter spaced tweezers.
 
         Args:
             iterations: Maximum number of GS iterations
@@ -953,6 +955,8 @@ class SLMTweezers:
             z_scan_steps: Number of z-slices to scan
             peak_sharpness_threshold: Minimum peak/mean ratio to consider a tweezer "good"
             z_correction_factor: How aggressively to correct z-errors (0-1, smaller = more gradual)
+            spatial_search_radius_um: Radius in µm to search around target (x,y) for peak.
+                                      If None, auto-calculated from tweezer spacing.
             verbose: Print progress
             tol: Early-stop tolerance
         """
@@ -987,6 +991,23 @@ class SLMTweezers:
         f = float(self.focal_length_um)
         k = 2.0 * np.pi / lam
         px_focal_um = (lam * f) / (W * pixel_um)
+        
+        # Auto-calculate spatial search radius if not provided
+        # For tighter spacing, we need a larger search radius to find shifted peaks
+        if spatial_search_radius_um is None:
+                    # Estimate spacing from target positions
+                    if num_tweezers > 1:
+                        xy = self.target_xy_um
+                        # Find minimum distance between tweezers
+                        distances = pdist(xy)
+                        min_spacing = np.min(distances) if len(distances) > 0 else 10.0
+                        # Use 30% of spacing as search radius (larger for tighter spacing)
+                        spatial_search_radius_um = max(5.0, min_spacing * 0.3)
+                    else:
+                        spatial_search_radius_um = 10.0
+        
+        if verbose:
+            print(f"  Spatial search radius: {spatial_search_radius_um:.2f} µm")
 
         # Pupil coordinates for defocus
         yy = (np.arange(H) - H / 2) * pixel_um
@@ -1025,11 +1046,19 @@ class SLMTweezers:
             if ii > 1 and ii % z_scan_every == 0:
                 if verbose:
                     print(f"\n  [Adaptive] Iteration {ii}: Scanning focal positions...")
+                    print(f"    Tilted plane z-range: [{np.min(self._z_per_spot):.1f}, {np.max(self._z_per_spot):.1f}] µm")
 
                 # Build z-scan array (global, same for all tweezers)
-                z_min_global = float(np.min(self._z_per_spot)) - z_scan_range_um
-                z_max_global = float(np.max(self._z_per_spot)) + z_scan_range_um
+                # CRITICAL: Scan around the tilted plane range, not z=0!
+                z_min_tilt = float(np.min(self._z_per_spot))
+                z_max_tilt = float(np.max(self._z_per_spot))
+                z_min_global = z_min_tilt - z_scan_range_um
+                z_max_global = z_max_tilt + z_scan_range_um
                 z_scan = np.linspace(z_min_global, z_max_global, z_scan_steps)
+                
+                if verbose:
+                    print(f"    Z-scan range: [{z_min_global:.1f}, {z_max_global:.1f}] µm ({z_scan_steps} steps)")
+                    print(f"    (Tilted plane covers [{z_min_tilt:.1f}, {z_max_tilt:.1f}] µm)")
 
                 # Precompute focal plane coordinates (once)
                 x_focal_um = (np.arange(W) - W/2) * px_focal_um
@@ -1051,40 +1080,92 @@ class SLMTweezers:
                     print(" Done!")
 
                 # Now extract intensity curves for each tweezer
+                # IMPROVED: Search in larger spatial region and use better peak detection
                 z_adjustments = []
                 quality_scores = []
+                spatial_search_pixels = int(np.ceil(spatial_search_radius_um / px_focal_um))
 
                 for tw_idx in range(num_tweezers):
                     target_z = float(self._z_per_spot[tw_idx])
                     target_xy = self.target_xy_um[tw_idx]  # (x, y) in microns
 
                     # Find nearest pixel to target position
-                    ix = np.argmin(np.abs(x_focal_um - target_xy[0]))
-                    iy = np.argmin(np.abs(y_focal_um - target_xy[1]))
+                    ix_center = np.argmin(np.abs(x_focal_um - target_xy[0]))
+                    iy_center = np.argmin(np.abs(y_focal_um - target_xy[1]))
 
-                    # Extract intensity in small box around target (3x3 box, take max)
-                    box_size = 3
-                    iy_min = max(0, iy - box_size//2)
-                    iy_max = min(H, iy + box_size//2 + 1)
-                    ix_min = max(0, ix - box_size//2)
-                    ix_max = min(W, ix + box_size//2 + 1)
+                    # Use larger spatial search box (adaptive based on spacing)
+                    iy_min = max(0, iy_center - spatial_search_pixels)
+                    iy_max = min(H, iy_center + spatial_search_pixels + 1)
+                    ix_min = max(0, ix_center - spatial_search_pixels)
+                    ix_max = min(W, ix_center + spatial_search_pixels + 1)
 
-                    # Extract z-curve at this (x,y) position
+                    # Extract 3D sub-volume around this tweezer
                     # I_volume shape: (z, y, x)
-                    # Take max over small spatial box for each z
-                    intensities = np.max(I_volume[:, iy_min:iy_max, ix_min:ix_max], axis=(1, 2))
-
-                    # Analyze peak
-                    peak_idx = np.argmax(intensities)
-                    peak_z = z_scan[peak_idx]
-                    peak_val = intensities[peak_idx]
+                    I_subvolume = I_volume[:, iy_min:iy_max, ix_min:ix_max]
+                    
+                    # Find peak in 3D space (z, y, x)
+                    peak_3d_idx = np.unravel_index(np.argmax(I_subvolume), I_subvolume.shape)
+                    peak_z_idx = peak_3d_idx[0]
+                    peak_y_local = peak_3d_idx[1]
+                    peak_x_local = peak_3d_idx[2]
+                    
+                    # Convert back to global coordinates
+                    peak_z = z_scan[peak_z_idx]
+                    peak_y_global = iy_min + peak_y_local
+                    peak_x_global = ix_min + peak_x_local
+                    
+                    # Extract z-curve at the peak (x,y) location
+                    # Use small box around peak for robustness
+                    box_small = 2
+                    iy_p_min = max(iy_min, peak_y_global - box_small)
+                    iy_p_max = min(iy_max, peak_y_global + box_small + 1)
+                    ix_p_min = max(ix_min, peak_x_global - box_small)
+                    ix_p_max = min(ix_max, peak_x_global + box_small + 1)
+                    
+                    intensities = np.max(I_volume[:, iy_p_min:iy_p_max, ix_p_min:ix_p_max], axis=(1, 2))
+                    
+                    # Improved peak detection: fit Gaussian or use centroid for better z-estimate
+                    peak_val = intensities[peak_z_idx]
                     mean_val = np.mean(intensities[intensities > 0])
-
-                    # Peak sharpness = ratio of peak to mean
+                    
+                    # Try to refine z-peak using weighted centroid around the peak
+                    # This gives better z-resolution than just argmax
+                    z_window = 3  # ±3 z-slices around peak
+                    z_start = max(0, peak_z_idx - z_window)
+                    z_end = min(len(z_scan), peak_z_idx + z_window + 1)
+                    z_weights = intensities[z_start:z_end]
+                    z_indices = np.arange(z_start, z_end)
+                    
+                    if np.sum(z_weights) > 0:
+                        z_centroid = np.sum(z_indices * z_weights) / np.sum(z_weights)
+                        # Interpolate z value
+                        if z_centroid < len(z_scan) - 1:
+                            z_frac = z_centroid - int(z_centroid)
+                            peak_z_refined = z_scan[int(z_centroid)] * (1 - z_frac) + z_scan[int(z_centroid) + 1] * z_frac
+                        else:
+                            peak_z_refined = z_scan[-1]
+                    else:
+                        peak_z_refined = peak_z
+                    
+                    # Peak sharpness = ratio of peak to mean (higher = sharper/more Gaussian-like)
                     peak_sharpness = peak_val / (mean_val + 1e-12)
+                    
+                    # Additional Gaussian quality metric: check if profile is symmetric
+                    # A good Gaussian should have similar falloff on both sides
+                    if peak_z_idx > 2 and peak_z_idx < len(intensities) - 2:
+                        left_side = intensities[max(0, peak_z_idx-3):peak_z_idx]
+                        right_side = intensities[peak_z_idx+1:min(len(intensities), peak_z_idx+4)]
+                        if len(left_side) > 0 and len(right_side) > 0:
+                            # Check symmetry: similar decay on both sides
+                            left_decay = (peak_val - np.mean(left_side)) / (peak_val + 1e-12)
+                            right_decay = (peak_val - np.mean(right_side)) / (peak_val + 1e-12)
+                            symmetry_ratio = min(left_decay, right_decay) / (max(left_decay, right_decay) + 1e-12)
+                            # Penalize asymmetric profiles
+                            if symmetry_ratio < 0.5:
+                                peak_sharpness *= 0.7  # Reduce quality score for asymmetric profiles
 
-                    # Z-error
-                    z_error = peak_z - target_z
+                    # Z-error (use refined z-position)
+                    z_error = peak_z_refined - target_z
                     z_adjustments.append(z_error)
                     quality_scores.append(peak_sharpness)
 
@@ -1101,17 +1182,40 @@ class SLMTweezers:
                 # Gradual correction
                 self._z_per_spot += z_correction_factor * z_adjustments
 
-                # Recompute defocus phases for each plane
+                # CRITICAL FIX: Re-assign tweezers to nearest planes after z-corrections
+                # This ensures each tweezer uses the correct defocus phase
+                z_min_um = float(np.min(self._z_per_spot))
+                z_max_um = float(np.max(self._z_per_spot))
+                self._z_planes = np.linspace(z_min_um, z_max_um, P).astype(np.float32)
+                
+                # Re-assign each tweezer to nearest plane
+                idx = np.abs(self._z_planes[None, :] - self._z_per_spot[:, None]).argmin(axis=1).astype(np.int32)
+                self._members = [np.where(idx == p)[0].tolist() for p in range(P)]
+                
+                # Recompute defocus phases for each plane based on actual plane z-positions
                 for p in range(P):
+                    z_p = float(self._z_planes[p])
+                    self._phi_planes[p] = (k / (2.0 * f * f)) * z_p * R2_pupil
+                
+                # Update B_target_planes to reflect new assignments
+                B_target_planes = []
+                for p in range(P):
+                    B_target_p = np.zeros_like(B_target_global, dtype=np.float32)
                     if len(self._members[p]) > 0:
-                        z_p = float(self._z_planes[p])
-                        self._phi_planes[p] = (k / (2.0 * f * f)) * z_p * R2_pupil
+                        B_target_flat = B_target_p.ravel()
+                        for s in self._members[p]:
+                            idx0 = s * block
+                            idxs = self.coordinates[idx0:idx0 + block]
+                            B_target_flat[idxs] = B_global_flat[idxs]
+                        B_target_p = B_target_flat.reshape(B_target_p.shape)
+                    B_target_planes.append(B_target_p)
 
                 if verbose:
                     n_good = np.sum(quality_scores >= peak_sharpness_threshold)
                     print(f"    Z-errors: RMS={np.std(z_adjustments):.2f} µm, max={np.max(np.abs(z_adjustments)):.2f} µm")
                     print(f"    Quality: {n_good}/{num_tweezers} tweezers above threshold")
                     print(f"    Mean sharpness: {np.mean(quality_scores):.2f}")
+                    print(f"    Re-assigned tweezers to planes (z-range: [{z_min_um:.1f}, {z_max_um:.1f}] µm)")
 
             # ========== STANDARD GS ITERATION ==========
             B_out_all = np.zeros_like(self.A_target, dtype=np.float64)
